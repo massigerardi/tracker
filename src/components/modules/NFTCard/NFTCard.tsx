@@ -1,60 +1,56 @@
-import { Box, HStack, Image, SimpleGrid, useColorModeValue } from '@chakra-ui/react';
-import { EvmNft } from '@moralisweb3/common-evm-utils';
-import { Eth } from '@web3uikit/icons';
-import { FC } from 'react';
-import { resolveIPFS } from 'utils/resolveIPFS';
+import {Box, HStack, Image, Link, useColorModeValue} from '@chakra-ui/react';
+import {EvmNft} from '@moralisweb3/common-evm-utils';
+import {Eth} from '@web3uikit/icons';
+import axios from "axios";
+import {FC, useEffect, useState} from 'react';
+import {resolveIPFS} from 'utils/resolveIPFS';
 
 export interface NFTCardParams {
   key: number;
   nft: EvmNft;
 }
 
-const NFTCard: FC<NFTCardParams> = ({ nft: { amount, contractType, name, symbol, metadata } }) => {
+interface Metadata { image?: string, name?: string, description?: string}
+
+const grabMetadata = async (tokenUri: string | undefined, metadata: Metadata): Promise<Metadata> => {
+  if (metadata && metadata.image || !tokenUri) {return metadata;}
+  return axios.get(tokenUri).then((response) => response.data as Metadata).catch(() => metadata);
+}
+
+const NFTCard: FC<NFTCardParams> = ({ nft: { tokenAddress, tokenId, amount, name, symbol, tokenUri, metadata } }) => {
   const bgColor = useColorModeValue('none', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const descBgColor = useColorModeValue('gray.100', 'gray.600');
-
+  const [meta, setMeta] = useState<Metadata>()
+  useEffect(() => {
+    grabMetadata(tokenUri, metadata as Metadata).then((response) => setMeta(response));
+  }, []);
+  const path = `/nft/${tokenAddress.lowercase}/${tokenId}`;
+  console.log(tokenAddress.lowercase)
   return (
+    <Link href={path}>
     <Box maxWidth="315px" bgColor={bgColor} padding={3} borderRadius="xl" borderWidth="1px" borderColor={borderColor}>
       <Box maxHeight="260px" overflow={'hidden'} borderRadius="xl">
         <Image
-          src={resolveIPFS((metadata as { image?: string })?.image)}
+          src={resolveIPFS(meta?.image)}
           alt={'nft'}
           minH="260px"
           minW="260px"
           boxSize="100%"
           objectFit="fill"
+          fallbackSrc="https://via.placeholder.com/260"
         />
       </Box>
       <Box mt="1" fontWeight="semibold" as="h4" noOfLines={1} marginTop={2}>
-        {name}
+        {name} {symbol}
       </Box>
       <HStack alignItems={'center'}>
         <Box as="h4" noOfLines={1} fontWeight="medium" fontSize="smaller">
-          {contractType}
+          Amount: {amount}
         </Box>
-
         <Eth fontSize="20px" />
       </HStack>
-      <SimpleGrid columns={2} spacing={4} bgColor={descBgColor} padding={2.5} borderRadius="xl" marginTop={2}>
-        <Box>
-          <Box as="h4" noOfLines={1} fontWeight="medium" fontSize="sm">
-            Symbol
-          </Box>
-          <Box as="h4" noOfLines={1} fontSize="sm">
-            {symbol}
-          </Box>
-        </Box>
-        <Box>
-          <Box as="h4" noOfLines={1} fontWeight="medium" fontSize="sm">
-            Amount
-          </Box>
-          <Box as="h4" noOfLines={1} fontSize="sm">
-            {amount}
-          </Box>
-        </Box>
-      </SimpleGrid>
     </Box>
+    </Link>
   );
 };
 
